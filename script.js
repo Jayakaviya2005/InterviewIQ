@@ -1,195 +1,580 @@
 
-const questions = [
-    "Tell me about yourself.",
-    "What are your strengths and weaknesses?",
-    "Why should we hire you?",
-    "Where do you see yourself in five years?",
-    "Tell me about a project you have completed.",
-    "How do you handle challenges?",
-    "Why did you choose this career?"
+"use strict";
+
+/* =====================================
+   INTERVIEWIQ - SMART READINESS SYSTEM
+===================================== */
+
+const questions = {
+    HR: [
+        "Tell me about yourself.",
+        "What are your strengths and weaknesses?",
+        "Why should we hire you?",
+        "Where do you see yourself in five years?",
+        "How do you handle challenges?",
+        "Describe a time you worked in a team."
+    ],
+
+    "Data Analyst": [
+        "What is the difference between SQL and Excel?",
+        "What is data cleaning?",
+        "Explain the difference between INNER JOIN and LEFT JOIN.",
+        "What is a dashboard?",
+        "How do you handle missing data?",
+        "What is the difference between Power BI and Tableau?"
+    ],
+
+    "Software Developer": [
+        "What is object-oriented programming?",
+        "Explain the difference between a class and an object.",
+        "What is the difference between an array and a linked list?",
+        "What is exception handling?",
+        "Explain the software development life cycle."
+    ],
+
+    "Full Stack Developer": [
+        "What is the difference between frontend and backend?",
+        "What is an API?",
+        "Explain HTML, CSS and JavaScript.",
+        "What is database connectivity?",
+        "What is the difference between GET and POST?"
+    ],
+
+    "Data Scientist": [
+        "What is machine learning?",
+        "What is the difference between supervised and unsupervised learning?",
+        "What is data preprocessing?",
+        "What is overfitting?",
+        "What is the purpose of Python in data science?"
+    ],
+
+    "Cloud Engineer": [
+        "What is cloud computing?",
+        "Explain IaaS, PaaS and SaaS.",
+        "What is the difference between public and private cloud?",
+        "What is cloud storage?",
+        "What is scalability in cloud computing?"
+    ],
+
+    Other: [
+        "Tell me about yourself.",
+        "What are your career goals?",
+        "How do you manage your time?",
+        "How do you solve problems?",
+        "Why are you interested in this role?"
+    ]
+};
+
+const roleSkills = {
+    "Data Analyst": [
+        "SQL",
+        "Excel",
+        "Python",
+        "Data Visualization",
+        "Problem Solving"
+    ],
+
+    "Software Developer": [
+        "Programming",
+        "Data Structures",
+        "Problem Solving",
+        "Debugging",
+        "Communication"
+    ],
+
+    "Full Stack Developer": [
+        "HTML/CSS/JavaScript",
+        "Frontend Development",
+        "Backend Development",
+        "Database Management",
+        "Problem Solving"
+    ],
+
+    "Data Scientist": [
+        "Python",
+        "Statistics",
+        "Machine Learning",
+        "Data Analysis",
+        "Problem Solving"
+    ],
+
+    "Cloud Engineer": [
+        "Cloud Fundamentals",
+        "Networking",
+        "Linux",
+        "Security",
+        "Problem Solving"
+    ],
+
+    Other: [
+        "Technical Knowledge",
+        "Communication",
+        "Problem Solving",
+        "Teamwork",
+        "Time Management"
+    ]
+};
+
+const roleWeights = {
+    "Data Analyst": [0.30, 0.20, 0.20, 0.15, 0.15],
+    "Software Developer": [0.25, 0.25, 0.20, 0.15, 0.15],
+    "Full Stack Developer": [0.25, 0.20, 0.20, 0.20, 0.15],
+    "Data Scientist": [0.25, 0.20, 0.20, 0.20, 0.15],
+    "Cloud Engineer": [0.25, 0.20, 0.20, 0.20, 0.15],
+    Other: [0.20, 0.20, 0.20, 0.20, 0.20]
+};
+
+const skillIds = [
+    "technical",
+    "communication",
+    "problem",
+    "teamwork",
+    "time"
 ];
 
 let currentScore = 0;
-let currentQuestion = questions[0];
+let currentQuestion = questions.HR[0];
+let currentCategory = "HR";
+
+let studentProfile = null;
+let assessmentCompleted = false;
+
+
+/* =====================================
+   DOM HELPERS
+===================================== */
+
+const getElement = (id) => document.getElementById(id);
 
 function showToast(message) {
-    const toast = document.getElementById("toast");
+    const toast = getElement("toast");
+
     toast.textContent = message;
     toast.style.display = "block";
 
-    setTimeout(() => {
+    clearTimeout(showToast.timer);
+
+    showToast.timer = setTimeout(() => {
         toast.style.display = "none";
     }, 2500);
 }
 
-// MOBILE MENU
+
+/* =====================================
+   NAVIGATION
+===================================== */
+
 function toggleMenu() {
-    document.getElementById("navLinks").classList.toggle("show");
+    getElement("navLinks").classList.toggle("show");
 }
 
-// DARK MODE
 function toggleTheme() {
-    document.body.classList.toggle("dark");
+    const isDark = document.body.classList.toggle("dark");
 
     const button = document.querySelector(".theme-btn");
-    button.textContent = document.body.classList.contains("dark") ? "☀️" : "🌙";
+
+    button.textContent = isDark ? "☀️" : "🌙";
+    button.setAttribute(
+        "aria-label",
+        isDark ? "Switch to light mode" : "Switch to dark mode"
+    );
+
+    localStorage.setItem("interviewTheme", isDark ? "dark" : "light");
 }
 
-// PROFILE REGISTRATION
-document.getElementById("studentForm").addEventListener("submit", function(event) {
+function loadTheme() {
+    const savedTheme = localStorage.getItem("interviewTheme");
+
+    if (savedTheme === "dark") {
+        document.body.classList.add("dark");
+        document.querySelector(".theme-btn").textContent = "☀️";
+    }
+}
+
+
+/* =====================================
+   STUDENT PROFILE
+===================================== */
+
+getElement("studentForm").addEventListener("submit", function(event) {
     event.preventDefault();
 
-    const name = document.getElementById("studentName").value.trim();
-    const role = document.getElementById("targetRole").value;
+    const name = getElement("studentName").value.trim();
+    const email = getElement("studentEmail").value.trim();
+    const course = getElement("studentCourse").value.trim();
+    const role = getElement("targetRole").value;
 
-    if (!name || !role) {
-        showToast("Please complete all required fields.");
+    if (!name || !email || !course || !role) {
+        showToast("Please complete all fields.");
         return;
     }
 
-    document.getElementById("profileMessage").textContent =
-        "Welcome, " + name + "! Your profile is ready. 🎉";
+    if (!getElement("studentEmail").checkValidity()) {
+        showToast("Please enter a valid email address.");
+        return;
+    }
 
-    document.getElementById("dashboardRole").textContent = role;
+    studentProfile = {
+        name,
+        email,
+        course,
+        role
+    };
+
+    localStorage.setItem(
+        "interviewProfile",
+        JSON.stringify(studentProfile)
+    );
+
+    getElement("profileMessage").textContent =
+        `Welcome, ${name}! Your profile is ready. 🎉`;
+
+    getElement("dashboardRole").textContent = role;
 
     showToast("Profile created successfully!");
 });
 
-// UPDATE SLIDER VALUES
+function loadProfile() {
+    try {
+        const saved = localStorage.getItem("interviewProfile");
+
+        if (!saved) return;
+
+        const profile = JSON.parse(saved);
+
+        if (
+            !profile ||
+            typeof profile.name !== "string" ||
+            typeof profile.role !== "string"
+        ) return;
+
+        studentProfile = profile;
+
+        getElement("studentName").value = profile.name;
+        getElement("studentEmail").value = profile.email || "";
+        getElement("studentCourse").value = profile.course || "";
+        getElement("targetRole").value = profile.role;
+
+        getElement("dashboardRole").textContent = profile.role;
+
+        getElement("profileMessage").textContent =
+            `Welcome back, ${profile.name}!`;
+    } catch (error) {
+        console.error("Unable to load profile:", error);
+    }
+}
+
+
+/* =====================================
+   SKILL RATING
+===================================== */
+
 function updateRating(skill) {
-    const value = document.getElementById(skill).value;
-    const output = document.getElementById(skill + "Value");
+    const value = getElement(skill).value;
+    const output = getElement(skill + "Value");
 
     output.textContent = value + "/5";
+
+    getElement(skill).setAttribute(
+        "aria-valuetext",
+        value + " out of 5"
+    );
 }
 
-// GET SKILL VALUES
 function getRatings() {
-    return [
-        Number(document.getElementById("technical").value),
-        Number(document.getElementById("communication").value),
-        Number(document.getElementById("problem").value),
-        Number(document.getElementById("teamwork").value),
-        Number(document.getElementById("time").value)
-    ];
+    return skillIds.map(id => Number(getElement(id).value));
 }
 
-// SKILL ASSESSMENT
+
+/* =====================================
+   SMART READINESS CALCULATION
+===================================== */
+
 function evaluateSkills() {
+
     const ratings = getRatings();
 
-    const average = ratings.reduce((total, value) => total + value, 0) / ratings.length;
+    const role = getElement("targetRole").value ||
+        studentProfile?.role ||
+        "Other";
 
-    currentScore = Math.round((average / 5) * 100);
+    const weights = roleWeights[role] || roleWeights.Other;
 
-    document.getElementById("scoreNumber").textContent = currentScore + "%";
-
-    let level = "";
-
-    if (currentScore >= 80) {
-        level = "Excellent 🌟";
-    } else if (currentScore >= 60) {
-        level = "Good 👍";
-    } else if (currentScore >= 40) {
-        level = "Developing 📚";
-    } else {
-        level = "Beginner 🌱";
-    }
-
-    document.getElementById("skillLevel").textContent = level;
-    document.getElementById("scoreStatus").textContent = "Your current readiness estimate";
-
-    document.getElementById("assessmentMessage").textContent =
-        "Your readiness estimate is " + currentScore + "%. Keep improving! 🚀";
-
-    createRoadmap(ratings);
-
-    showToast("Your assessment is complete!");
-}
-
-// LEARNING ROADMAP
-function createRoadmap(ratings) {
-    const skillNames = [
-        "Technical Skills",
-        "Communication Skills",
-        "Problem-Solving Skills",
-        "Teamwork",
-        "Time Management"
-    ];
-
-    const roadmap = document.getElementById("roadmapList");
-    roadmap.innerHTML = "";
-
-    let improvementCount = 0;
-
-    ratings.forEach((rating, index) => {
-        if (rating <= 3) {
-            const item = document.createElement("li");
-            item.textContent = "📌 Improve " + skillNames[index] + " through regular practice.";
-            roadmap.appendChild(item);
-            improvementCount++;
-        }
-    });
-
-    if (improvementCount === 0) {
-        const item = document.createElement("li");
-        item.textContent = "🌟 Great ratings! Continue practising to maintain your skills.";
-        roadmap.appendChild(item);
-    }
-
-    const finalItem = document.createElement("li");
-    finalItem.textContent = "🚀 Practise mock interviews and build practical projects.";
-    roadmap.appendChild(finalItem);
-}
-
-// RANDOM INTERVIEW QUESTIONS
-function generateQuestion() {
-    let nextQuestion;
-
-    do {
-        nextQuestion = questions[Math.floor(Math.random() * questions.length)];
-    } while (nextQuestion === currentQuestion && questions.length > 1);
-
-    currentQuestion = nextQuestion;
-
-    document.getElementById("questionBox").textContent = currentQuestion;
-    document.getElementById("answerInput").value = "";
-    document.getElementById("feedbackBox").style.display = "none";
-}
-
-// DEMO ANSWER FEEDBACK
-function evaluateAnswer() {
-    const answer = document.getElementById("answerInput").value.trim();
-    const feedback = document.getElementById("feedbackBox");
-
-    if (answer.length < 10) {
-        showToast("Please enter a longer answer.");
+    if (ratings.some(value => value < 1 || value > 5)) {
+        showToast("Please provide valid skill ratings.");
         return;
     }
 
-    const wordCount = answer.split(/\s+/).length;
+    const weightedAverage = ratings.reduce(
+        (total, rating, index) =>
+            total + rating * weights[index],
+        0
+    );
 
-    let message = "";
+    currentScore = Math.round((weightedAverage / 5) * 100);
 
-    if (wordCount < 20) {
-        message = "💡 Your answer is quite short. Try adding more relevant details and examples.";
-    } else if (wordCount < 50) {
-        message = "👍 Good attempt! Try to explain your points clearly and include a practical example.";
-    } else {
-        message = "🌟 Nice effort! Your answer has useful detail. Keep practising clear and structured responses.";
-    }
+    assessmentCompleted = true;
 
-    feedback.innerHTML =
-        "<strong>Demo Feedback</strong><br>" +
-        message +
-        "<br><br>📝 Word count: " + wordCount +
-        "<br>💬 Tip: Use real examples and explain your contribution.";
+    const level =
+        currentScore >= 80 ? "Excellent 🌟" :
+        currentScore >= 60 ? "Good 👍" :
+        currentScore >= 40 ? "Developing 📚" :
+        "Beginner 🌱";
 
-    feedback.style.display = "block";
-    showToast("Demo feedback generated!");
+    getElement("scoreNumber").textContent = currentScore + "%";
+    getElement("skillLevel").textContent = level;
+
+    getElement("scoreStatus").textContent =
+        "Your role-based readiness estimate";
+
+    getElement("assessmentMessage").textContent =
+        `Your readiness estimate is ${currentScore}%. Keep improving! 🚀`;
+
+    createRoadmap(ratings, role);
+
+    showToast("Assessment completed successfully!");
+
+    getElement("dashboard").scrollIntoView({
+        behavior: "smooth"
+    });
 }
 
-// INITIAL DISPLAY
-document.addEventListener("DOMContentLoaded", function() {
-    questions[0] = "Tell me about yourself.";
+
+/* =====================================
+   PERSONALIZED LEARNING ROADMAP
+===================================== */
+
+function createRoadmap(ratings, role) {
+
+    const skillNames = roleSkills[role] || roleSkills.Other;
+
+    const roadmap = getElement("roadmapList");
+
+    roadmap.replaceChildren();
+
+    const improvementSkills = ratings
+        .map((rating, index) => ({
+            rating,
+            skill: skillNames[index]
+        }))
+        .filter(item => item.rating <= 3)
+        .sort((a, b) => a.rating - b.rating);
+
+    if (improvementSkills.length === 0) {
+
+        const item = document.createElement("li");
+
+        item.textContent =
+            "🌟 Excellent! Continue practising and building projects.";
+
+        roadmap.appendChild(item);
+
+    } else {
+
+        improvementSkills.forEach(item => {
+
+            const li = document.createElement("li");
+
+            li.textContent =
+                `📌 Improve ${item.skill} through regular practice.`;
+
+            roadmap.appendChild(li);
+        });
+    }
+
+    const project = document.createElement("li");
+
+    project.textContent =
+        `🚀 Build a practical project related to ${role}.`;
+
+    roadmap.appendChild(project);
+
+    const practice = document.createElement("li");
+
+    practice.textContent =
+        "🎤 Practise technical and HR mock interviews regularly.";
+
+    roadmap.appendChild(practice);
+}
+
+
+/* =====================================
+   MOCK INTERVIEW
+===================================== */
+
+function getQuestionPool() {
+
+    const role = studentProfile?.role ||
+        getElement("targetRole").value ||
+        "Other";
+
+    const hrQuestions = questions.HR;
+    const technicalQuestions = questions[role] || questions.Other;
+
+    return [
+        ...hrQuestions,
+        ...technicalQuestions
+    ];
+}
+
+function generateQuestion() {
+
+    const pool = getQuestionPool();
+
+    const available = pool.filter(
+        question => question !== currentQuestion
+    );
+
+    const nextQuestion = available[
+        Math.floor(Math.random() * available.length)
+    ];
+
+    currentQuestion = nextQuestion;
+
+    getElement("questionBox").textContent = currentQuestion;
+
+    getElement("answerInput").value = "";
+
+    getElement("feedbackBox").style.display = "none";
+}
+
+
+/* =====================================
+   ANSWER EVALUATION
+===================================== */
+
+function evaluateAnswer() {
+
+    const answer = getElement("answerInput").value.trim();
+
+    const feedback = getElement("feedbackBox");
+
+    if (answer.length < 10) {
+        showToast("Please enter a meaningful answer.");
+        return;
+    }
+
+    const words = answer.split(/\s+/).filter(Boolean);
+
+    const wordCount = words.length;
+
+    const sentences = answer
+        .split(/[.!?]+/)
+        .filter(sentence => sentence.trim().length > 0);
+
+    const hasExample =
+        /\b(example|project|experience|developed|created|worked)\b/i.test(answer);
+
+    const hasStructure =
+        /\b(because|therefore|first|finally|result|learned)\b/i.test(answer);
+
+    let feedbackMessages = [];
+
+    if (wordCount < 20) {
+        feedbackMessages.push(
+            "Your answer is short. Add more relevant details."
+        );
+    } else if (wordCount <= 60) {
+        feedbackMessages.push(
+            "Good answer length. Try adding more specific details."
+        );
+    } else {
+        feedbackMessages.push(
+            "Detailed answer. Keep your explanation focused."
+        );
+    }
+
+    if (sentences.length < 2) {
+        feedbackMessages.push(
+            "Try organizing your answer into clear sentences."
+        );
+    } else {
+        feedbackMessages.push(
+            "Good effort in explaining your thoughts."
+        );
+    }
+
+    if (hasExample) {
+        feedbackMessages.push(
+            "Good! You included an example or experience."
+        );
+    } else {
+        feedbackMessages.push(
+            "Try including a real project or practical example."
+        );
+    }
+
+    if (!hasStructure) {
+        feedbackMessages.push(
+            "Use a structured explanation to make your answer clearer."
+        );
+    }
+
+    feedback.replaceChildren();
+
+    const heading = document.createElement("strong");
+    heading.textContent = "🧠 Practice Feedback";
+
+    const list = document.createElement("ul");
+
+    feedbackMessages.forEach(message => {
+        const item = document.createElement("li");
+        item.textContent = message;
+        list.appendChild(item);
+    });
+
+    const count = document.createElement("p");
+    count.textContent = `📝 Word count: ${wordCount}`;
+
+    const note = document.createElement("p");
+    note.textContent =
+        "Note: This is automated demo feedback, not an AI assessment.";
+
+    feedback.append(heading, list, count, note);
+
+    feedback.style.display = "block";
+
+    showToast("Practice feedback generated!");
+}
+
+
+/* =====================================
+   BASIC TESTING
+===================================== */
+
+function runBasicTests() {
+
+    console.assert(
+        getRatings().length === 5,
+        "Test failed: Five skill ratings should exist."
+    );
+
+    console.assert(
+        currentScore >= 0 && currentScore <= 100,
+        "Test failed: Score must be between 0 and 100."
+    );
+
+    console.assert(
+        typeof toggleTheme === "function",
+        "Test failed: Theme function missing."
+    );
+
+    console.log("InterviewIQ basic tests executed.");
+}
+
+
+/* =====================================
+   INITIALIZATION
+===================================== */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    loadTheme();
+
+    loadProfile();
+
+    skillIds.forEach(id => updateRating(id));
+
+    runBasicTests();
+
 });
